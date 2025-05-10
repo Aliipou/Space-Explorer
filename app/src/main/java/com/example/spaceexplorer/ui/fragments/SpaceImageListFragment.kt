@@ -30,6 +30,11 @@ class SpaceImageListFragment : Fragment() {
     private val viewModel: SpaceViewModel by viewModel()
     private lateinit var adapter: SpaceImageAdapter
     
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setHasOptionsMenu(true) // Still needed for compatibility
+    }
+    
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -42,17 +47,18 @@ class SpaceImageListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
-        setHasOptionsMenu(true)
         setupRecyclerView()
         observeViewModel()
         setupSwipeRefresh()
     }
     
+    @Deprecated("Deprecated in Java")
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         inflater.inflate(R.menu.menu_space_list, menu)
         super.onCreateOptionsMenu(menu, inflater)
     }
     
+    @Deprecated("Deprecated in Java")
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_refresh -> {

@@ -16,6 +16,7 @@ import com.example.spaceexplorer.R
 import com.example.spaceexplorer.databinding.FragmentSpaceImageDetailBinding
 import com.example.spaceexplorer.models.AstronomyPicture
 import com.example.spaceexplorer.ui.viewmodels.SpaceViewModel
+import com.example.spaceexplorer.utils.DateUtils
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
 /**
@@ -29,6 +30,11 @@ class SpaceImageDetailFragment : Fragment() {
     private val viewModel: SpaceViewModel by viewModel()
     private var currentPicture: AstronomyPicture? = null
     
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setHasOptionsMenu(true) // Still needed for compatibility
+    }
+    
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -41,16 +47,17 @@ class SpaceImageDetailFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
-        setHasOptionsMenu(true)
         observeViewModel()
         setupClickListeners()
     }
     
+    @Deprecated("Deprecated in Java")
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         inflater.inflate(R.menu.menu_space_detail, menu)
         super.onCreateOptionsMenu(menu, inflater)
     }
     
+    @Deprecated("Deprecated in Java")
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_share -> {
@@ -76,7 +83,13 @@ class SpaceImageDetailFragment : Fragment() {
         binding.apply {
             // Set title and date
             titleTextView.text = picture.title
-            dateTextView.text = picture.date
+            
+            // Try to format the date nicely if possible
+            try {
+                dateTextView.text = DateUtils.formatApiDateForDisplay(picture.date)
+            } catch (e: Exception) {
+                dateTextView.text = picture.date
+            }
             
             // Set full explanation
             explanationTextView.text = picture.explanation
