@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Space Explorer</string>
+    <string name="space_image_details">Space Image Details</string>
+    <string name="space_image_description">Space Image</string>
+    <string name="video_thumbnail_description">Video Thumbnail</string>
+    <string name="play_video">Play Video</string>
+    <string name="view_on_nasa">View on NASA</string>
+    <string name="share_space_image">Share Space Image</string>
+    <string name="action_refresh">Refresh</string>
+    <string name="action_recent">Recent Images</string>
+    <string name="action_share">Share</string>
+    <string name="action_open_in_browser">Open in Browser</string>
+    <string name="no_space_images_available">No space images available. Pull down to refresh.</string>
+    <string name="error_loading_data">Error loading data. Please try again.</string>
+</resources>
