@@ -1,23 +1,94 @@
-// Top-level build file
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.2.0'
-        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0'
-        classpath 'androidx.navigation:navigation-safe-args-gradle-plugin:2.7.6'
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'kotlin-kapt'
+    id 'androidx.navigation.safeargs.kotlin'
+}
+
+// Add this at the top of your app/build.gradle file
+def keysPropertiesFile = rootProject.file("keys.properties")
+def keysProperties = new Properties()
+if (keysPropertiesFile.exists()) {
+    keysProperties.load(new FileInputStream(keysPropertiesFile))
+} else {
+    // Fallback to the API key in app/src/keys.properties for now
+    def srcKeysFile = project.file("src/keys.properties")
+    if (srcKeysFile.exists()) {
+        keysProperties.load(new FileInputStream(srcKeysFile))
     }
 }
 
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
+android {
+    namespace 'com.example.spaceexplorer'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.example.spaceexplorer"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        
+        // Use the API key from properties or fallback to demo key
+        buildConfigField "String", "NASA_API_KEY", "\"${keysProperties.getProperty('NASA_API_KEY', 'DEMO_KEY')}\""
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    
+    buildFeatures {
+        viewBinding true
+    }
+    
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    
+    kotlinOptions {
+        jvmTarget = '17'
     }
 }
 
-task clean(type: Delete) {
-    delete rootProject.buildDir
+dependencies {
+    // Android core
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.10.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    
+    // Navigation component
+    implementation 'androidx.navigation:navigation-fragment-ktx:2.7.6'
+    implementation 'androidx.navigation:navigation-ui-ktx:2.7.6'
+    
+    // Network libraries
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
+    implementation 'com.google.code.gson:gson:2.10.1'
+    
+    // Image loading
+    implementation 'com.github.bumptech.glide:glide:4.16.0'
+    
+    // Dependency injection
+    implementation 'io.insert-koin:koin-android:3.5.0'
+    implementation 'io.insert-koin:koin-androidx-viewmodel:3.5.0'
+    
+    // Coroutines
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    
+    // SwipeRefreshLayout
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    
+    // Testing
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 }
