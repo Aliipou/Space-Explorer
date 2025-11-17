@@ -60,7 +60,7 @@ buildConfigField "String", "NASA_API_KEY", "\"YOUR_API_KEY_HERE\""
 
 1. Clone the repository:
 ```
-git clone https://github.com/yourusername/space-explorer.git
+git clone https://github.com/Aliipou/space-explorer.git
 ```
 
 2. Open the project in Android Studio.
@@ -91,9 +91,6 @@ This project meets all the requirements specified in the assignment:
 - ✅ Added links to NASA source for each image
 - ✅ Support for both portrait and landscape orientations
 
-## Screenshots
-
-*[Screenshots would be included here in a real README file]*
 
 ## License
 
