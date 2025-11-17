@@ -9,7 +9,9 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.example.spaceexplorer.R
@@ -17,7 +19,7 @@ import com.example.spaceexplorer.databinding.FragmentSpaceImageDetailBinding
 import com.example.spaceexplorer.models.AstronomyPicture
 import com.example.spaceexplorer.ui.viewmodels.SpaceViewModel
 import com.example.spaceexplorer.utils.DateUtils
-import org.koin.androidx.viewmodel.ext.android.viewModel
+import org.koin.androidx.viewmodel.ext.android.activityViewModel
 
 /**
  * Fragment for displaying detailed information about a specific space image
@@ -26,15 +28,10 @@ class SpaceImageDetailFragment : Fragment() {
 
     private var _binding: FragmentSpaceImageDetailBinding? = null
     private val binding get() = _binding!!
-    
-    private val viewModel: SpaceViewModel by viewModel()
+
+    private val viewModel: SpaceViewModel by activityViewModel()
     private var currentPicture: AstronomyPicture? = null
-    
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setHasOptionsMenu(true) // Still needed for compatibility
-    }
-    
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -43,33 +40,35 @@ class SpaceImageDetailFragment : Fragment() {
         _binding = FragmentSpaceImageDetailBinding.inflate(inflater, container, false)
         return binding.root
     }
-    
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
+
+        setupMenu()
         observeViewModel()
         setupClickListeners()
     }
-    
-    @Deprecated("Deprecated in Java")
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        inflater.inflate(R.menu.menu_space_detail, menu)
-        super.onCreateOptionsMenu(menu, inflater)
-    }
-    
-    @Deprecated("Deprecated in Java")
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_share -> {
-                shareSpaceImage()
-                true
+
+    private fun setupMenu() {
+        requireActivity().addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                menuInflater.inflate(R.menu.menu_space_detail, menu)
             }
-            R.id.action_open_in_browser -> {
-                openInBrowser()
-                true
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                return when (menuItem.itemId) {
+                    R.id.action_share -> {
+                        shareSpaceImage()
+                        true
+                    }
+                    R.id.action_open_in_browser -> {
+                        openInBrowser()
+                        true
+                    }
+                    else -> false
+                }
             }
-            else -> super.onOptionsItemSelected(item)
-        }
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
     
     private fun observeViewModel() {

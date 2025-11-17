@@ -7,8 +7,10 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.spaceexplorer.R
@@ -17,7 +19,7 @@ import com.example.spaceexplorer.models.AstronomyPicture
 import com.example.spaceexplorer.ui.adapters.SpaceImageAdapter
 import com.example.spaceexplorer.ui.viewmodels.SpaceViewModel
 import com.google.android.material.snackbar.Snackbar
-import org.koin.androidx.viewmodel.ext.android.viewModel
+import org.koin.androidx.viewmodel.ext.android.activityViewModel
 
 /**
  * Fragment for displaying a list of space images
@@ -26,15 +28,10 @@ class SpaceImageListFragment : Fragment() {
 
     private var _binding: FragmentSpaceImageListBinding? = null
     private val binding get() = _binding!!
-    
-    private val viewModel: SpaceViewModel by viewModel()
+
+    private val viewModel: SpaceViewModel by activityViewModel()
     private lateinit var adapter: SpaceImageAdapter
-    
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setHasOptionsMenu(true) // Still needed for compatibility
-    }
-    
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -43,34 +40,36 @@ class SpaceImageListFragment : Fragment() {
         _binding = FragmentSpaceImageListBinding.inflate(inflater, container, false)
         return binding.root
     }
-    
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
+
+        setupMenu()
         setupRecyclerView()
         observeViewModel()
         setupSwipeRefresh()
     }
-    
-    @Deprecated("Deprecated in Java")
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        inflater.inflate(R.menu.menu_space_list, menu)
-        super.onCreateOptionsMenu(menu, inflater)
-    }
-    
-    @Deprecated("Deprecated in Java")
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_refresh -> {
-                viewModel.loadRandomAstronomyPictures()
-                true
+
+    private fun setupMenu() {
+        requireActivity().addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                menuInflater.inflate(R.menu.menu_space_list, menu)
             }
-            R.id.action_recent -> {
-                viewModel.loadRecentAstronomyPictures()
-                true
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                return when (menuItem.itemId) {
+                    R.id.action_refresh -> {
+                        viewModel.loadRandomAstronomyPictures()
+                        true
+                    }
+                    R.id.action_recent -> {
+                        viewModel.loadRecentAstronomyPictures()
+                        true
+                    }
+                    else -> false
+                }
             }
-            else -> super.onOptionsItemSelected(item)
-        }
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
     
     private fun setupRecyclerView() {
