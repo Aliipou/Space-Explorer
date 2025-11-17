@@ -1,12 +1,7 @@
 *.iml
 .gradle
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
+/.idea/
 .DS_Store
 /build
 /captures
@@ -15,3 +10,44 @@
 local.properties
 keystore.properties
 app/release/
+app/build/
+
+# Gradle cache directories (keep wrapper only)
+gradle/8.10/
+gradle/buildOutputCleanup/
+gradle/config.properties
+gradle/vcs-1/
+!gradle/wrapper/
+
+# API Keys - NEVER commit real keys
+keys.properties
+*.keystore
+*.jks
+
+# Build outputs
+build_output.txt
+build_error.txt
+nul
+
+# Screenshots and temp files
+Screenshot_*.jpg
+*.png
+*.jpeg
+
+# IDE specific
+.idea/
+Idea/
+.claude/
+
+# Temporary junk files - remove these from repo
+FETCH_HEAD
+git
+master
+backup-space-explorer
+cleanup.ps1
+planforclaude.md
+
+# Batch scripts (keep templates instead)
+build_debug.bat
+run_build.bat
+run_all_tests.bat
