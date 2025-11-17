@@ -20,7 +20,7 @@ class SpaceViewModel(private val nasaApiService: NasaApiService) : ViewModel() {
     val astronomyPictures: LiveData<List<AstronomyPicture>> = _astronomyPictures
 
     // LiveData for error messages
-    private val _errorMessage = MutableLiveData<String>()
+    private val _errorMessage = MutableLiveData<String>("")
     val errorMessage: LiveData<String> = _errorMessage
 
     // LiveData for loading state
@@ -44,6 +44,7 @@ class SpaceViewModel(private val nasaApiService: NasaApiService) : ViewModel() {
      */
     fun loadRandomAstronomyPictures(count: Int = 20) {
         _isLoading.value = true
+        _errorMessage.value = "" // Clear previous error
         viewModelScope.launch {
             try {
                 val pictures = nasaApiService.getAstronomyPictures(count = count)
@@ -61,17 +62,18 @@ class SpaceViewModel(private val nasaApiService: NasaApiService) : ViewModel() {
      */
     fun loadRecentAstronomyPictures() {
         _isLoading.value = true
+        _errorMessage.value = "" // Clear previous error
         viewModelScope.launch {
             try {
                 val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
                 val endDate = LocalDate.now()
                 val startDate = endDate.minusDays(30)
-                
+
                 val pictures = nasaApiService.getAstronomyPicturesByDateRange(
                     startDate = startDate.format(formatter),
                     endDate = endDate.format(formatter)
                 )
-                
+
                 _astronomyPictures.value = pictures
                 _isLoading.value = false
             } catch (e: Exception) {
