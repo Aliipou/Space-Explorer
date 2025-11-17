@@ -1,0 +1,9 @@
+# NASA API Key Configuration
+# Copy this file to keys.properties and add your actual API key
+# Get your free API key at: https://api.nasa.gov/
+
+NASA_API_KEY=YOUR_NASA_API_KEY_HERE
+
+# NOTE: The app will fall back to DEMO_KEY if no key is provided,
+# but DEMO_KEY has rate limits (30 requests per hour, 50 per day)
+# Get your own key for unlimited access
