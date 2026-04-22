@@ -8,7 +8,7 @@
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9-7F52FF?style=flat&logo=kotlin)](https://kotlinlang.org/)
 [![CI](https://github.com/Aliipou/Space-Explorer/actions/workflows/ci.yml/badge.svg)](https://github.com/Aliipou/Space-Explorer/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-30%2B_cases-brightgreen?style=flat)](app/src/test/)
+[![Tests](https://img.shields.io/badge/Tests-45%2B_cases-brightgreen?style=flat)](app/src/test/)
 
 iOS companion: [SpaceWeather-iOS (SwiftUI)](https://github.com/Aliipou/SpaceWeather-iOS)
 
@@ -40,52 +40,99 @@ iOS companion: [SpaceWeather-iOS (SwiftUI)](https://github.com/Aliipou/SpaceWeat
 
 ---
 
-## Architecture
+## Architecture — Clean Architecture (3 layers)
 
 ```
 app/src/main/java/com/example/spaceexplorer/
 │
-├── SpaceExplorerApp.kt              # Application class — Koin DI init
+├── SpaceExplorerApp.kt              # Application — Koin 3-module DI setup
+│
+├── data/                            # DATA LAYER
+│   ├── local/
+│   │   ├── SpaceDatabase.kt         # Room singleton, schema v1
+│   │   ├── AstronomyPictureEntity.kt # @Entity with TTL + toDomain()/fromDomain()
+│   │   └── AstronomyPictureDao.kt   # @Dao: getAll, getByDate, insert, deleteExpired, hasFreshCache
+│   ├── remote/
+│   │   └── RemoteDataSource.kt      # Wraps Retrofit API, single responsibility
+│   └── repository/
+│       ├── SpaceRepository.kt       # Interface — contract for domain layer
+│       └── SpaceRepositoryImpl.kt   # Offline-first: cache → remote → update cache
+│                                    # Exponential backoff retry (3 attempts, jitter)
+│
+├── domain/                          # DOMAIN LAYER
+│   ├── model/
+│   │   └── SpaceResult.kt           # sealed class: Loading / Success(fromCache) / Error
+│   └── usecase/
+│       ├── GetAPODUseCase.kt         # invoke() → Flow<SpaceResult>
+│       └── GetRecentAPODUseCase.kt  # invoke() → Flow<SpaceResult>, domain sort
 │
 ├── api/
-│   ├── NasaApiService.kt            # Retrofit interface — suspend functions
-│   └── RetrofitClient.kt            # OkHttpClient + logging + Retrofit builder
+│   ├── NasaApiService.kt            # Retrofit — suspend functions
+│   └── RetrofitClient.kt            # OkHttpClient + logging interceptor
 │
 ├── models/
-│   └── AstronomyPicture.kt          # Data class, Serializable, computed helpers
+│   └── AstronomyPicture.kt          # Domain model — Serializable
 │
-├── ui/
-│   ├── activities/
-│   │   └── MainActivity.kt          # NavHost, Toolbar, NavController
-│   ├── fragments/
-│   │   ├── SpaceImageListFragment.kt   # RecyclerView, SwipeRefresh, MenuProvider
-│   │   └── SpaceImageDetailFragment.kt # Detail, share, open in browser
-│   ├── adapters/
-│   │   └── SpaceImageAdapter.kt     # ListAdapter with DiffUtil
-│   └── viewmodels/
-│       └── SpaceViewModel.kt        # ViewModel + Coroutines + LiveData
-│
-└── utils/
-    ├── Constants.kt
-    └── DateUtils.kt
+└── ui/                              # PRESENTATION LAYER
+    ├── activities/MainActivity.kt
+    ├── fragments/
+    │   ├── SpaceImageListFragment.kt  # Collects StateFlow with lifecycleScope
+    │   └── SpaceImageDetailFragment.kt
+    ├── adapters/SpaceImageAdapter.kt  # ListAdapter + DiffUtil
+    ├── viewmodels/
+    │   └── SpaceViewModel.kt          # StateFlow<SpaceUiState>, no LiveData
+    └── utils/
 ```
 
 ### Design Patterns
 
 | Concern | Solution |
 |---|---|
-| Architecture | MVVM — ViewModel + LiveData + Repository-ready |
-| Concurrency | Kotlin Coroutines (`viewModelScope`, `suspend`) |
-| Dependency injection | Koin — `activityViewModel()`, scoped modules |
-| Navigation | Navigation Component + SafeArgs (type-safe args) |
-| Image loading | Glide — memory + disk LRU cache |
-| Networking | Retrofit 2 + OkHttp 4 + Gson |
-| API key management | `BuildConfig` field from `keys.properties` (never committed) |
-| Reactive UI | `LiveData.observe()` — lifecycle-aware, no memory leaks |
+| Architecture | Clean Architecture (Data / Domain / Presentation) |
+| Reactive state | `StateFlow<SpaceUiState>` — replaces LiveData, coroutine-native |
+| Offline-first | Repository: serve cache → fetch remote → update cache |
+| Concurrency | Kotlin Coroutines + Flow (`viewModelScope`, `suspend`) |
+| Retry strategy | Exponential backoff with jitter in `SpaceRepositoryImpl` |
+| Dependency injection | Koin 3 — 3 modules: data, domain, presentation |
+| Local persistence | Room 2.6 — `AstronomyPictureEntity` with 24h TTL |
+| Image loading | Glide 4 — memory + disk LRU cache |
+| Navigation | Navigation Component + SafeArgs |
+| API key | `BuildConfig` field from `keys.properties` (gitignored) |
 
 ---
 
-## Concurrency: Kotlin Coroutines
+## Offline-First Strategy
+
+The Repository implements a **stale-while-revalidate** pattern:
+
+```
+1. Emit SpaceResult.Loading
+2. Emit cached data from Room immediately (fromCache = true)   ← user sees data instantly
+3. Fetch fresh data from network with exponential backoff retry
+4. On success: update Room, emit fresh data (fromCache = false)
+5. On failure + cache exists: silently swallow error (user already has data)
+6. On failure + no cache: emit SpaceResult.Error
+```
+
+This means the app works **100% offline** if data was fetched at least once. Room stores entries with a 24-hour TTL. Expired entries are pruned automatically.
+
+---
+
+## Concurrency: Kotlin Coroutines + StateFlow
+
+The ViewModel exposes a single `StateFlow<SpaceUiState>` — no LiveData anywhere:
+
+```kotlin
+data class SpaceUiState(
+    val pictures: List<AstronomyPicture> = emptyList(),
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val isFromCache: Boolean = false,
+    val selectedPicture: AstronomyPicture? = null
+)
+```
+
+The Fragment collects with `lifecycleScope` + `repeatOnLifecycle(STARTED)` — no memory leaks, lifecycle-safe.
 
 Every network call is a `suspend` function in the Retrofit interface:
 
@@ -211,12 +258,15 @@ open app/build/reports/tests/testDebugUnitTest/index.html
 
 | File | Cases | What's tested |
 |---|---|---|
-| `SpaceViewModelTest` | 5 | Load success/failure, isLoading lifecycle, selectPicture, recent mode |
-| `AstronomyPictureModelTest` | 9 | `isImage()`, copyright formatting, explanation truncation, equality |
+| `SpaceViewModelStateFlowTest` | 7 | StateFlow emissions, Success/Error/Loading, selectPicture, clearError, cache flag |
+| `SpaceResultTest` | 9 | sealed class states, `fromCache`, extension callbacks (`onSuccess`/`onError`), chaining |
+| `SpaceRepositoryTest` | 6 | Offline-first flow, cache-first emit, error swallowing with cache, Room insert, clearCache |
+| `SpaceViewModelTest` | 5 | (legacy LiveData) load success/failure, isLoading lifecycle, selectPicture |
+| `AstronomyPictureModelTest` | 9 | `isImage()`, copyright, truncation, equality, copy |
 | `AstronomyPictureTest` | existing | Core model assertions |
-| `ApiResponseParsingTest` | existing | Gson JSON parsing, field mapping |
-| `DateUtilsTest` | existing | Date formatting, edge cases |
-| `RetrofitClientTest` | 5 | Service creation, HTTPS enforced, NASA URL, interface implementation |
+| `ApiResponseParsingTest` | existing | Gson JSON parsing |
+| `DateUtilsTest` | existing | Date formatting |
+| `RetrofitClientTest` | 5 | HTTPS enforced, NASA URL, service creation |
 
 ### Instrumentation Tests (`app/src/androidTest/`)
 
