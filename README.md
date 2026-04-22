@@ -95,9 +95,59 @@ app/src/main/java/com/example/spaceexplorer/
 | Retry strategy | Exponential backoff with jitter in `SpaceRepositoryImpl` |
 | Dependency injection | Koin 3 — 3 modules: data, domain, presentation |
 | Local persistence | Room 2.6 — `AstronomyPictureEntity` with 24h TTL |
-| Image loading | Glide 4 — memory + disk LRU cache |
+| Image loading | Glide 4 (list) + Coil 2 (Compose detail) — LRU cache |
 | Navigation | Navigation Component + SafeArgs |
+| Infinite scroll | Paging 3 — `ApodPagingSource` walks dates backward |
+| UI (detail) | Jetpack Compose — `ApodDetailScreen` with animations |
+| Metrics | `PerformanceTracker` — cache hit rate + load times |
 | API key | `BuildConfig` field from `keys.properties` (gitignored) |
+
+---
+
+## Jetpack Compose Detail Screen
+
+`ui/compose/ApodDetailScreen.kt` renders the APOD detail entirely in Compose:
+
+- **Hero image** via `AsyncImage` (Coil) with `crossfade` + gradient overlay
+- **Entry animation** — `AnimatedVisibility` with `fadeIn() + slideInVertically()`
+- **Accessibility** — `semantics { contentDescription }` on all interactive elements
+- **Copyright badge** — semi-transparent `Surface` anchored to image bottom-right
+- **Media type chip** — green badge when `mediaType == "image"`
+
+The Fragment host inflates a `ComposeView` and calls `setContent { ApodDetailScreen(...) }`.
+
+---
+
+## Paging 3 — Infinite Scroll
+
+`data/paging/ApodPagingSource` walks the NASA archive **backward by date**:
+
+```kotlin
+class ApodPagingSource(private val remote: RemoteDataSource) : PagingSource<String, AstronomyPicture>() {
+    override suspend fun load(params: LoadParams<String>): LoadResult<String, AstronomyPicture> {
+        val endDate = params.key ?: today
+        val pictures = remote.getAPODByDateRange(startDate, endDate).sortedByDescending { it.date }
+        return LoadResult.Page(data = pictures, prevKey = startDate.minusDays(1), nextKey = null)
+    }
+}
+```
+
+Each page loads `pageSize` days. `prevKey` drives the next load; `nextKey = null` because the list is newest-first.
+
+---
+
+## Performance Metrics
+
+`util/PerformanceTracker` is a lightweight singleton that tracks every repository call:
+
+```kotlin
+PerformanceTracker.startTrace("apod_random")
+// ... fetch ...
+PerformanceTracker.endTrace("apod_random", fromCache = true)
+// → logcat: [apod_random] 12ms | source=CACHE | cache_hit_rate=87%
+```
+
+Call `PerformanceTracker.summary()` to get a formatted report. Replace the `Log` calls with Firebase Performance / Datadog in production.
 
 ---
 
@@ -168,7 +218,7 @@ Benefits: no callback hell, structured concurrency (no coroutine leaks), automat
 
 ## Error Handling
 
-Network failures propagate through `MutableLiveData<String>` to the UI layer. The Fragment observes reactively and shows a non-blocking Snackbar — the user can retry without leaving the screen. Loading state (`_isLoading`) drives the `ProgressBar` and `SwipeRefreshLayout` independently, so UI state is always consistent.
+Errors propagate via `SpaceResult.Error` through the repository → use case → ViewModel → `StateFlow<SpaceUiState>`. The Fragment collects with `repeatOnLifecycle(STARTED)` and shows a non-blocking Snackbar. Loading and error state are part of the same `SpaceUiState` — always consistent, no split LiveData streams.
 
 ---
 
@@ -261,7 +311,7 @@ open app/build/reports/tests/testDebugUnitTest/index.html
 | `SpaceViewModelStateFlowTest` | 7 | StateFlow emissions, Success/Error/Loading, selectPicture, clearError, cache flag |
 | `SpaceResultTest` | 9 | sealed class states, `fromCache`, extension callbacks (`onSuccess`/`onError`), chaining |
 | `SpaceRepositoryTest` | 6 | Offline-first flow, cache-first emit, error swallowing with cache, Room insert, clearCache |
-| `SpaceViewModelTest` | 5 | (legacy LiveData) load success/failure, isLoading lifecycle, selectPicture |
+| `SpaceViewModelTest` | 5 | StateFlow: load success/failure, isLoading, selectPicture, recent mode |
 | `AstronomyPictureModelTest` | 9 | `isImage()`, copyright, truncation, equality, copy |
 | `AstronomyPictureTest` | existing | Core model assertions |
 | `ApiResponseParsingTest` | existing | Gson JSON parsing |
@@ -290,6 +340,9 @@ open app/build/reports/tests/testDebugUnitTest/index.html
 | LiveData / ViewModel | 2.6.2 | Lifecycle-aware state |
 | Mockito-Kotlin | 5.1.0 | Unit test mocks |
 | Coroutines Test | 1.7.3 | `runTest`, `StandardTestDispatcher` |
+| Compose BOM | 2024.02 | Declarative UI (detail screen) |
+| Paging 3 | 3.2.1 | Infinite scroll by date range |
+| Coil Compose | 2.5.0 | Image loading in Compose screens |
 
 ---
 

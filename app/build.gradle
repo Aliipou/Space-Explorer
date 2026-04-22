@@ -45,6 +45,11 @@ android {
     buildFeatures {
         viewBinding true
         buildConfig true
+        compose true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion '1.5.4'
     }
     
     compileOptions {
@@ -105,6 +110,22 @@ dependencies {
     implementation 'androidx.room:room-ktx:2.6.1'
     kapt 'androidx.room:room-compiler:2.6.1'
     testImplementation 'androidx.room:room-testing:2.6.1'
+
+    // Jetpack Compose BOM
+    implementation platform('androidx.compose:compose-bom:2024.02.00')
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.material:material-icons-extended'
+    implementation 'androidx.activity:activity-compose:1.8.2'
+    debugImplementation 'androidx.compose.ui:ui-tooling'
+
+    // Paging 3
+    implementation 'androidx.paging:paging-runtime-ktx:3.2.1'
+    testImplementation 'androidx.paging:paging-testing:3.2.1'
+
+    // Coil (image loading for Compose)
+    implementation 'io.coil-kt:coil-compose:2.5.0'
 
     // Testing
     testImplementation 'junit:junit:4.13.2'
